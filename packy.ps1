@@ -183,37 +183,56 @@ while ($true) {
         Write-Host "========================================" -ForegroundColor DarkCyan
 
         try {
-            # Try to execute with proper encoding handling
-            $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $processInfo.FileName = $ExePath
-            $processInfo.Arguments = $cmd
-            $processInfo.UseShellExecute = $false
-            $processInfo.RedirectStandardOutput = $true
-            $processInfo.RedirectStandardError = $true
-            $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-            $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
-
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo = $processInfo
-            $process.Start() | Out-Null
-
-            $output = $process.StandardOutput.ReadToEnd()
-            $error = $process.StandardError.ReadToEnd()
-            $process.WaitForExit()
-
-            if ($output) {
-                Write-Host $output
-            }
-            if ($error) {
-                Write-Host $error -ForegroundColor Red
-            }
-
-            if ($process.ExitCode -ne 0) {
+            # Special handling for interactive commands (watch, tray)
+            if ($cmd -in @("watch", "tray")) {
                 Write-Host ""
-                Write-Host "[警告] 命令执行完成，退出代码：$($process.ExitCode)" -ForegroundColor Yellow
+                Write-Host "[提示] 这是一个持续运行的命令" -ForegroundColor Cyan
+                Write-Host "[提示] 按 Ctrl+C 可以停止并返回菜单" -ForegroundColor Cyan
+                Write-Host ""
+
+                # For interactive commands, use Start-Process without capture
+                $process = Start-Process -FilePath $ExePath -ArgumentList $cmd -NoNewWindow -PassThru -Wait
+
+                if ($process.ExitCode -ne 0 -and $process.ExitCode -ne -1073741510) {  # -1073741510 is Ctrl+C
+                    Write-Host ""
+                    Write-Host "[警告] 命令已停止，退出代码：$($process.ExitCode)" -ForegroundColor Yellow
+                } else {
+                    Write-Host ""
+                    Write-Host "[信息] 命令已停止" -ForegroundColor Green
+                }
             } else {
-                Write-Host ""
-                Write-Host "[成功] 命令执行完成" -ForegroundColor Green
+                # For non-interactive commands, use the original method
+                $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+                $processInfo.FileName = $ExePath
+                $processInfo.Arguments = $cmd
+                $processInfo.UseShellExecute = $false
+                $processInfo.RedirectStandardOutput = $true
+                $processInfo.RedirectStandardError = $true
+                $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+                $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+                $process = New-Object System.Diagnostics.Process
+                $process.StartInfo = $processInfo
+                $process.Start() | Out-Null
+
+                $output = $process.StandardOutput.ReadToEnd()
+                $error = $process.StandardError.ReadToEnd()
+                $process.WaitForExit()
+
+                if ($output) {
+                    Write-Host $output
+                }
+                if ($error) {
+                    Write-Host $error -ForegroundColor Red
+                }
+
+                if ($process.ExitCode -ne 0) {
+                    Write-Host ""
+                    Write-Host "[警告] 命令执行完成，退出代码：$($process.ExitCode)" -ForegroundColor Yellow
+                } else {
+                    Write-Host ""
+                    Write-Host "[成功] 命令执行完成" -ForegroundColor Green
+                }
             }
         } catch {
             Write-Host "[错误] 命令执行失败：$($_.Exception.Message)" -ForegroundColor Red

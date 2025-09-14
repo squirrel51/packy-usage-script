@@ -207,47 +207,82 @@ class CliDisplay:
     def _show_watch_display(self, data: BudgetData, interval: int):
         """监控模式下的显示格式"""
         now = datetime.now().strftime("%H:%M:%S")
-        
+
         # 标题行
-        title = f"== Packy 预算监控 - {now} (刷新间隔: {interval}秒) =="
-        click.echo(click.style(title, bold=True, fg='cyan'))
-        click.echo("=" * 50)
-        
+        title = f"Packy 预算监控 - {now} (刷新间隔: {interval}秒)"
+        click.echo("\n" + "=" * 60)
+        click.echo(click.style(f"  {title}", bold=True, fg='cyan'))
+        click.echo("=" * 60)
+
         # 紧凑的双栏显示
         daily = data.daily
         monthly = data.monthly
-        
-        # 使用简单的分隔符避免乱码
-        click.echo(f"日预算             | 月预算")
-        click.echo(f"------------------|------------------")
-        
+
+        # 计算对齐宽度
+        click.echo()
+        click.echo("  " + "日预算".center(26) + " | " + "月预算".center(26))
+        click.echo("  " + "-" * 26 + "-+-" + "-" * 26)
+
         # 进度条
-        daily_bar = self._create_progress_bar(daily.percentage, 15)
-        monthly_bar = self._create_progress_bar(monthly.percentage, 15)
-        
-        click.echo(f"{daily_bar} {daily.percentage:5.1f}% | {monthly_bar} {monthly.percentage:5.1f}%")
-        
-        # 金额信息
-        click.echo(f"${daily.used:8.2f}/${daily.total:<8.2f} | ${monthly.used:8.2f}/${monthly.total:<8.2f}")
-        click.echo(f"剩余: ${daily.remaining:>8.2f}     | 剩余: ${monthly.remaining:>8.2f}")
-        
-        # 状态指示
-        daily_status = "[危险]" if daily.is_critical else "[警告]" if daily.is_warning else "[正常]"
-        monthly_status = "[危险]" if monthly.is_critical else "[警告]" if monthly.is_warning else "[正常]"
-        
-        # 使用颜色来显示状态
-        daily_color = 'red' if daily.is_critical else 'yellow' if daily.is_warning else 'green'
-        monthly_color = 'red' if monthly.is_critical else 'yellow' if monthly.is_warning else 'green'
-        
-        daily_status_colored = click.style(daily_status, fg=daily_color, bold=True)
-        monthly_status_colored = click.style(monthly_status, fg=monthly_color, bold=True)
-        
-        click.echo(f"状态: {daily_status_colored}       | 状态: {monthly_status_colored}")
-        
+        daily_bar = self._create_progress_bar(daily.percentage, 20)
+        monthly_bar = self._create_progress_bar(monthly.percentage, 20)
+
+        click.echo(f"  {daily_bar} | {monthly_bar}")
+        click.echo(f"  {daily.percentage:>6.1f}% 已使用{' ' * 14} | {monthly.percentage:>6.1f}% 已使用")
+        click.echo()
+
+        # 金额信息 - 更清晰的格式
+        daily_used_str = f"${daily.used:,.2f}"
+        daily_total_str = f"${daily.total:,.2f}"
+        monthly_used_str = f"${monthly.used:,.2f}"
+        monthly_total_str = f"${monthly.total:,.2f}"
+
+        click.echo(f"  已使用: {daily_used_str:>10}{' ' * 8} | 已使用: {monthly_used_str:>10}")
+        click.echo(f"  总额度: {daily_total_str:>10}{' ' * 8} | 总额度: {monthly_total_str:>10}")
+        click.echo(f"  剩余额: ${daily.remaining:>9,.2f}{' ' * 8} | 剩余额: ${monthly.remaining:>9,.2f}")
+        click.echo()
+
+        # 状态指示 - 居中对齐
+        if daily.is_critical:
+            daily_status = "❌ 危险"
+            daily_color = 'red'
+        elif daily.is_warning:
+            daily_status = "⚠️  警告"
+            daily_color = 'yellow'
+        else:
+            daily_status = "✅ 正常"
+            daily_color = 'green'
+
+        if monthly.is_critical:
+            monthly_status = "❌ 危险"
+            monthly_color = 'red'
+        elif monthly.is_warning:
+            monthly_status = "⚠️  警告"
+            monthly_color = 'yellow'
+        else:
+            monthly_status = "✅ 正常"
+            monthly_color = 'green'
+
+        daily_status_colored = click.style(f"状态: {daily_status}", fg=daily_color, bold=True)
+        monthly_status_colored = click.style(f"状态: {monthly_status}", fg=monthly_color, bold=True)
+
+        # 计算填充以居中
+        status_line = f"  {daily_status_colored}".ljust(35) + " | " + f"{monthly_status_colored}"
+        click.echo(status_line)
+
+        # 底部分隔线
+        click.echo("=" * 60)
+
         # 提示信息
         if data.overall_status in ["warning", "critical"]:
-            status_text = "警告" if data.overall_status == "warning" else "危险"
-            click.echo(f"\n[!] 检测到高使用率！整体状态: {status_text}")
+            if data.overall_status == "critical":
+                alert_msg = "💥 危险警报：预算使用率过高，请立即注意！"
+                alert_color = 'red'
+            else:
+                alert_msg = "⚠️  注意：预算使用率较高，请合理控制使用"
+                alert_color = 'yellow'
+            click.echo()
+            click.echo(click.style(f"  {alert_msg}", fg=alert_color, bold=True, blink=True))
     
     def show_error(self, message: str, suggestion: Optional[str] = None):
         """显示错误信息"""
