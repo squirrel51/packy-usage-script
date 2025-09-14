@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# 虚拟环境
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+
+# PyInstaller
+*.manifest
+*.spec
+build/
+dist/
+
+# 配置和密钥文件（重要！）
+config.yaml
+*.key
+*.pem
+*.token
+.env
+.env.*
+secrets.json
+credentials.json
+*_token.txt
+*_key.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+temp/
+tmp/
+
+# 测试数据
+test_data/
+*.test
+
+# 用户数据目录
+.packy-usage/
+user_data/
+
+# 个人配置
+personal_config.yaml
+local_settings.py

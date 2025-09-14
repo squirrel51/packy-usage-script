@@ -1,0 +1,50 @@
+# Packy Usage Monitor 配置文件示例
+# 文件位置: ~/.packy-usage/config.yaml
+# 首次运行时会自动创建默认配置
+
+# API 配置
+api:
+  endpoint: "https://www.packycode.com/api/backend/users/info"  # API 端点地址
+  timeout: 10        # 请求超时时间（秒）
+  retry_count: 3     # 重试次数
+
+# 轮询配置  
+polling:
+  enabled: true      # 是否启用自动轮询
+  interval: 30       # 轮询间隔（秒）
+  retry_on_failure: 3  # 失败后重试次数
+
+# 显示配置
+display:
+  decimal_places: 2     # 金额显示的小数位数
+  currency_symbol: "$"  # 货币符号
+  show_percentage: true # 是否显示百分比
+  show_amounts: true    # 是否显示金额
+
+# 警报配置
+alerts:
+  daily_warning: 75.0    # 日预算警告阈值（百分比）
+  daily_critical: 90.0   # 日预算严重阈值（百分比）
+  monthly_warning: 80.0  # 月预算警告阈值（百分比）
+  monthly_critical: 95.0 # 月预算严重阈值（百分比）
+
+# 通知配置
+notification:
+  enabled: true              # 是否启用通知
+  quiet_hours_start: "22:00" # 免打扰开始时间
+  quiet_hours_end: "08:00"   # 免打扰结束时间
+  channels:                  # 通知渠道
+    - "desktop"              # 桌面通知
+
+# 网络配置
+network:
+  proxy: ""                           # HTTP代理地址（留空为不使用）
+  verify_ssl: true                    # 是否验证SSL证书
+  user_agent: "Packy-Usage-Monitor/1.0.0"  # 用户代理
+
+# 日志配置  
+logging:
+  level: "INFO"       # 日志级别 (DEBUG, INFO, WARNING, ERROR)
+  file: ""            # 日志文件路径（留空为不记录文件）
+  max_size: "10MB"    # 日志文件最大大小
+  backup_count: 5     # 保留的日志备份数量
