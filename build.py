@@ -37,14 +37,18 @@ def clean_build():
 def install_dependencies():
     """安装依赖"""
     print("📦 Installing dependencies...")
-    
+
+    # 跳过依赖安装，假设依赖已经安装
+    print("   ⏭️ Skipping dependency installation (assuming already installed)")
+
+    # 验证关键依赖是否可用
     try:
-        subprocess.run([
-            sys.executable, "-m", "pip", "install", "-r", "requirements.txt"
-        ], check=True, cwd=SCRIPT_DIR)
-        print("   ✅ Dependencies installed successfully")
-    except subprocess.CalledProcessError as e:
-        print(f"   ❌ Failed to install dependencies: {e}")
+        import click
+        import pystray
+        print("   ✅ Core dependencies verified")
+    except ImportError as e:
+        print(f"   ❌ Missing core dependency: {e}")
+        print("   💡 Please manually install: pip install click pystray")
         sys.exit(1)
 
 def create_pyinstaller_spec():
