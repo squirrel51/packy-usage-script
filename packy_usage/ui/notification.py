@@ -100,7 +100,21 @@ class NotificationManager:
             logger.info(f"已发送{level}通知: {title}")
             
         except Exception as e:
-            logger.error(f"发送通知失败: {e}")
+            error_msg = str(e)
+
+            # 将常见的英文错误消息转换为中文
+            if "No usable implementation found" in error_msg:
+                error_msg = "通知系统不可用 (缺少必要的系统组件)"
+            elif "No module named 'plyer.platforms'" in error_msg:
+                error_msg = "通知库模块缺失 (plyer.platforms)"
+            elif "Permission denied" in error_msg:
+                error_msg = "通知权限被拒绝"
+            elif "timeout" in error_msg.lower():
+                error_msg = "通知发送超时"
+            else:
+                error_msg = f"通知系统错误: {error_msg}"
+
+            logger.error(f"发送通知失败: {error_msg}")
             # 通知失败不应该影响程序运行，所以不抛出异常
     
     def _is_in_quiet_hours(self) -> bool:
@@ -161,8 +175,8 @@ class NotificationManager:
         """测试通知功能"""
         try:
             self.send_info(
-                "Test Notification",
-                "This is a test notification from Packy Usage Monitor. If you can see this, notifications are working properly!"
+                "通知测试",
+                "这是一条来自 Packy 使用监视器的测试通知。如果您能看到这条消息，说明通知功能运行正常！"
             )
             return True
         except Exception as e:
