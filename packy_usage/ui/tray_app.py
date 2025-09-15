@@ -6,6 +6,8 @@
 
 import threading
 import time
+import os
+import sys
 from typing import Optional, Callable
 from pathlib import Path
 
@@ -73,21 +75,43 @@ class TrayApp:
     
     def stop(self):
         """停止托盘应用"""
+        logger.info("正在停止托盘应用...")
         self.running = False
-        
-        # 停止轮询线程
-        if self.polling_thread and self.polling_thread.is_alive():
-            self.polling_thread.join(timeout=2)
-        
-        # 停止批量更新管理器
-        self.optimizer.batch_manager.stop()
-        
-        # 停止托盘图标
-        if self.icon:
-            self.icon.stop()
-        
-        # 关闭性能优化器
-        self.optimizer.shutdown()
+
+        try:
+            # 停止轮询线程（更短的超时时间）
+            if self.polling_thread and self.polling_thread.is_alive():
+                logger.debug("正在停止轮询线程...")
+                self.polling_thread.join(timeout=1)  # 减少超时时间
+                if self.polling_thread.is_alive():
+                    logger.warning("轮询线程停止超时，将被强制终止")
+
+            # 停止批量更新管理器
+            try:
+                logger.debug("正在停止批量更新管理器...")
+                self.optimizer.batch_manager.stop()
+            except Exception as e:
+                logger.warning(f"停止批量更新管理器失败: {e}")
+
+            # 关闭性能优化器
+            try:
+                logger.debug("正在关闭性能优化器...")
+                self.optimizer.shutdown()
+            except Exception as e:
+                logger.warning(f"关闭性能优化器失败: {e}")
+
+            # 停止托盘图标（最后执行，最短超时）
+            if self.icon:
+                logger.debug("正在停止托盘图标...")
+                try:
+                    self.icon.stop()
+                except Exception as e:
+                    logger.warning(f"停止托盘图标失败: {e}")
+
+        except Exception as e:
+            logger.error(f"停止托盘应用时出现错误: {e}")
+
+        logger.info("托盘应用清理完成")
     
     def _create_tray_icon(self):
         """创建托盘图标"""
@@ -101,26 +125,27 @@ class TrayApp:
         self.icon = pystray.Icon(
             "packy-usage",
             image,
-            "Packy Usage Monitor - Initializing...",
+            "Packy 使用监视器 - 初始化中...",
             menu
         )
     
     def _create_menu(self) -> Menu:
         """创建右键菜单"""
         return Menu(
-            MenuItem("📊 Show Details", self._show_details, default=True),
-            MenuItem("🔄 Refresh", self._refresh_data),
+            MenuItem("📊 显示详情", self._show_details, default=True),
+            MenuItem("🔄 刷新数据", self._refresh_data),
             Menu.SEPARATOR,
-            MenuItem("⚙️ Settings", Menu(
-                MenuItem("🔑 Set Token", self._configure_token),
-                MenuItem("📋 Show Config", self._show_config),
+            MenuItem("⚙️ 设置", Menu(
+                MenuItem("🔑 设置 Token", self._configure_token),
+                MenuItem("📋 显示配置", self._show_config),
                 Menu.SEPARATOR,
-                MenuItem("🔄 Enable Polling", self._toggle_polling, checked=self._is_polling_enabled),
-                MenuItem("🔇 Quiet Mode", self._toggle_quiet_mode, checked=self._is_quiet_mode),
+                MenuItem("🔄 启用轮询", self._toggle_polling, checked=self._is_polling_enabled),
+                MenuItem("🔇 静音模式", self._toggle_quiet_mode, checked=self._is_quiet_mode),
             )),
             Menu.SEPARATOR,
-            MenuItem("ℹ️ About", self._show_about),
-            MenuItem("❌ Exit", self._exit_app)
+            MenuItem("ℹ️ 关于", self._show_about),
+            MenuItem("❌ 退出", self._exit_app),
+            MenuItem("⚡ 强制退出", self._force_exit)
         )
     
     def _create_icon_image(self, status: str = "normal", percentage: float = 0) -> Image.Image:
@@ -332,31 +357,31 @@ class TrayApp:
         monthly = data.monthly
         
         tooltip_parts = [
-            "Packy Usage Monitor",
+            "Packy 使用监视器",
             "",
-            f"Daily: {daily.percentage:.1f}% (${daily.used:.2f}/${daily.total:.2f})",
-            f"Monthly: {monthly.percentage:.1f}% (${monthly.used:.2f}/${monthly.total:.2f})",
+            f"日预算: {daily.percentage:.1f}% (${daily.used:.2f}/${daily.total:.2f})",
+            f"月预算: {monthly.percentage:.1f}% (${monthly.used:.2f}/${monthly.total:.2f})",
         ]
         
         if data.overall_status in ["warning", "critical"]:
             tooltip_parts.append("")
-            tooltip_parts.append(f"⚠️ Status: {data.overall_status.title()}")
+            tooltip_parts.append(f"⚠️ 状态: {data.overall_status.title()}")
         
         if data.last_updated:
             update_time = data.last_updated.strftime("%H:%M:%S")
-            tooltip_parts.append(f"Updated: {update_time}")
+            tooltip_parts.append(f"更新时间: {update_time}")
         
         return "\n".join(tooltip_parts)
     
     def _show_no_token_icon(self):
         """显示无Token状态"""
         self.icon.icon = self._create_icon_image("no_token")
-        self.icon.title = "Packy Usage Monitor - Token Required\nRight-click to configure"
+        self.icon.title = "Packy 使用监视器 - 需要 Token\n右键点击进行配置"
     
     def _show_error_icon(self, message: str):
         """显示错误状态"""
         self.icon.icon = self._create_icon_image("error")
-        self.icon.title = f"Packy Usage Monitor - {message}\nRight-click to refresh"
+        self.icon.title = f"Packy 使用监视器 - {message}\n右键点击刷新"
     
     def _check_and_send_notification(self, data: BudgetData):
         """检查并发送通知"""
@@ -365,25 +390,25 @@ class TrayApp:
         # 检查日预算
         if data.daily.percentage >= alert_config.daily_critical:
             self.notification_manager.send_critical_alert(
-                "Daily Budget Critical",
-                f"Daily budget usage has reached {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})"
+                "日预算严重警告",
+                f"日预算使用量已达到 {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})"
             )
         elif data.daily.percentage >= alert_config.daily_warning:
             self.notification_manager.send_warning_alert(
-                "Daily Budget Warning", 
-                f"Daily budget usage is {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})"
+                "日预算警告",
+                f"日预算使用量为 {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})"
             )
         
         # 检查月预算
         if data.monthly.percentage >= alert_config.monthly_critical:
             self.notification_manager.send_critical_alert(
-                "Monthly Budget Critical",
-                f"Monthly budget usage has reached {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})"
+                "月预算严重警告",
+                f"月预算使用量已达到 {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})"
             )
         elif data.monthly.percentage >= alert_config.monthly_warning:
             self.notification_manager.send_warning_alert(
-                "Monthly Budget Warning",
-                f"Monthly budget usage is {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})"
+                "月预算警告",
+                f"月预算使用量为 {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})"
             )
     
     # 菜单事件处理器
@@ -392,7 +417,7 @@ class TrayApp:
         if self.current_data:
             self._show_details_window()
         else:
-            self.notification_manager.send_info("No Data", "No budget data available. Click refresh to fetch data.")
+            self.notification_manager.send_info("没有数据", "暂无预算数据。请点击刷新获取数据。")
     
     def _show_details_window(self):
         """显示详细信息窗口（使用通知代替）"""
@@ -400,11 +425,11 @@ class TrayApp:
             return
         
         data = self.current_data
-        message = f"""Daily Budget: {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})
-Monthly Budget: {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})
-Status: {data.overall_status.title()}"""
+        message = f"""日预算: {data.daily.percentage:.1f}% (${data.daily.used:.2f}/${data.daily.total:.2f})
+月预算: {data.monthly.percentage:.1f}% (${data.monthly.used:.2f}/${data.monthly.total:.2f})
+状态: {data.overall_status.title()}"""
         
-        self.notification_manager.send_info("Budget Details", message)
+        self.notification_manager.send_info("预算详情", message)
     
     def _refresh_data(self, icon, item):
         """刷新数据（使用线程池）"""
@@ -413,36 +438,36 @@ Status: {data.overall_status.title()}"""
         
         # 使用线程池提交更新任务
         self.optimizer.thread_pool.submit(self._update_data)
-        self.notification_manager.send_info("Refresh", "Refreshing budget data...")
+        self.notification_manager.send_info("刷新", "正在刷新预算数据...")
     
     def _configure_token(self, icon, item):
         """配置Token（打开配置提示）"""
-        message = """To configure your API Token:
+        message = """配置 API Token:
 
-1. API Token (Recommended):
-   - Get permanent API Token (starts with 'sk-') from PackyCode Dashboard
-   
+1. API Token（推荐）:
+   - 从 PackyCode 仪表板获取永久 API Token（以 'sk-' 开头）
+
 2. JWT Token:
-   - Visit PackyCode Dashboard
-   - Open browser DevTools (F12)
-   - Go to Application > Cookies
-   - Copy 'token' cookie value
+   - 访问 PackyCode 仪表板
+   - 打开浏览器开发者工具 (F12)
+   - 转到 Application > Cookies
+   - 复制 'token' cookie 值
 
-Run: packy_usage.py config set-token"""
+运行: packy_usage.py config set-token"""
         
-        self.notification_manager.send_info("Configure Token", message)
+        self.notification_manager.send_info("配置 Token", message)
     
     def _show_config(self, icon, item):
         """显示配置"""
         config = self.config.get_api_config()
         polling = self.config.get_polling_config()
         
-        message = f"""Configuration:
-API Endpoint: {config.endpoint}
-Polling: {'Enabled' if polling.enabled else 'Disabled'} ({polling.interval}s)
-Token: {'Configured' if self.token_manager.is_token_available() else 'Not Set'}"""
+        message = f"""配置信息:
+API 端点: {config.endpoint}
+轮询: {'已启用' if polling.enabled else '已禁用'} ({polling.interval}秒)
+Token: {'已配置' if self.token_manager.is_token_available() else '未设置'}"""
         
-        self.notification_manager.send_info("Configuration", message)
+        self.notification_manager.send_info("配置信息", message)
     
     def _toggle_polling(self, icon, item):
         """切换轮询状态"""
@@ -451,39 +476,67 @@ Token: {'Configured' if self.token_manager.is_token_available() else 'Not Set'}"
         
         if not current:
             self._start_polling()
-            self.notification_manager.send_info("Polling", "Polling enabled")
+            self.notification_manager.send_info("轮询", "轮询已启用")
         else:
-            self.notification_manager.send_info("Polling", "Polling disabled")
+            self.notification_manager.send_info("轮询", "轮询已禁用")
     
     def _toggle_quiet_mode(self, icon, item):
         """切换静默模式"""
         current = self.config.get_notification_config().enabled
         self.config.update_config("notification", {"enabled": not current})
         self.notification_manager.send_info(
-            "Notifications", 
-            "Disabled" if current else "Enabled"
+            "通知",
+            "已禁用" if current else "已启用"
         )
     
     def _show_about(self, icon, item):
         """显示关于信息"""
         from .. import __version__
-        message = f"""Packy Usage Monitor v{__version__}
+        message = f"""Packy 使用监视器 v{__version__}
 
-A standalone budget monitoring tool for Packy Code API.
+一个独立的 Packy Code API 预算监控工具。
 
-Features:
-• Real-time budget monitoring
-• System tray integration  
-• Smart notifications
-• Command-line interface
+功能特性:
+• 实时预算监控
+• 系统托盘集成
+• 智能通知
+• 命令行界面
 
-Visit: https://github.com/packycode/packy-usage-monitor"""
+访问: https://github.com/packycode/packy-usage-monitor"""
         
-        self.notification_manager.send_info("About", message)
+        self.notification_manager.send_info("关于", message)
     
     def _exit_app(self, icon, item):
         """退出应用"""
-        self.stop()
+        def force_exit():
+            """强制退出函数"""
+            try:
+                logger.info("用户请求退出应用")
+
+                # 立即设置停止标志
+                self.running = False
+
+                # 尝试正常停止
+                self.stop()
+
+                # 给一点时间让清理完成
+                time.sleep(0.5)
+
+            except Exception as e:
+                logger.error(f"退出应用时出现错误: {e}")
+            finally:
+                # 强制退出
+                logger.info("强制退出应用")
+                os._exit(0)
+
+        # 在新线程中执行退出，避免阻塞GUI线程
+        exit_thread = threading.Thread(target=force_exit, daemon=True)
+        exit_thread.start()
+
+    def _force_exit(self, icon, item):
+        """强制退出应用（无清理）"""
+        logger.warning("用户请求强制退出应用")
+        os._exit(0)
     
     # 菜单状态检查器
     def _is_polling_enabled(self, item):
