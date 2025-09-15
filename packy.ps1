@@ -40,12 +40,13 @@ $menuOptions = @(
     @{ Number = 5; Command = "status"; Description = "显示当前使用状态" },
     @{ Number = 6; Command = "tray"; Description = "启动系统托盘应用" },
     @{ Number = 7; Command = "watch"; Description = "实时监控模式" },
-    @{ Number = 8; Command = "version"; Description = "显示版本信息" },
-    @{ Number = 9; Command = "help"; Description = "显示帮助信息" },
+    @{ Number = 8; Command = "token"; Description = "设置 API Token" },
+    @{ Number = 9; Command = "version"; Description = "显示版本信息" },
+    @{ Number = 10; Command = "help"; Description = "显示帮助信息" },
     @{ Number = 0; Command = "exit"; Description = "退出程序" }
 )
 
-$validCommands = @("check", "config", "diagnose", "perf-test", "status", "tray", "watch")
+$validCommands = @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "token")
 
 # Function to show menu
 function Show-Menu {
@@ -62,6 +63,8 @@ function Show-Menu {
             Write-Host "  [$($option.Number)] $($option.Description)" -ForegroundColor Red
         } elseif ($option.Command -eq "help" -or $option.Command -eq "version") {
             Write-Host "  [$($option.Number)] $($option.Description)" -ForegroundColor Cyan
+        } elseif ($option.Command -eq "token") {
+            Write-Host "  [$($option.Number)] $($option.Description)" -ForegroundColor Magenta
         } else {
             Write-Host "  [$($option.Number)] $($option.Description)" -ForegroundColor White
         }
@@ -75,13 +78,13 @@ Clear-Host
 # Interactive loop
 while ($true) {
     Show-Menu
-    Write-Host "请输入选择 [0-9]: " -ForegroundColor Yellow -NoNewline
+    Write-Host "请输入选择 [0-10]: " -ForegroundColor Yellow -NoNewline
     $userInput = Read-Host
 
     # Handle empty input
     if ([string]::IsNullOrWhiteSpace($userInput)) {
         Write-Host ""
-        Write-Host "[提示] 请输入有效的数字选项 (0-9)" -ForegroundColor Yellow
+        Write-Host "[提示] 请输入有效的数字选项 (0-10)" -ForegroundColor Yellow
         Start-Sleep -Seconds 1
         Clear-Host
         continue
@@ -99,7 +102,7 @@ while ($true) {
             $cmd = $selectedOption.Command
         } else {
             Write-Host ""
-            Write-Host "[错误] 无效选择：$userInput (请输入 0-9)" -ForegroundColor Red
+            Write-Host "[错误] 无效选择：$userInput (请输入 0-10)" -ForegroundColor Red
             Start-Sleep -Seconds 2
             Clear-Host
             continue
@@ -107,10 +110,10 @@ while ($true) {
     } else {
         # Handle direct command input (backward compatibility)
         $cmd = $userInput.ToLower()
-        if (-not ($cmd -in @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "version", "help", "exit", "quit", "q"))) {
+        if (-not ($cmd -in @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "version", "help", "exit", "quit", "q", "token"))) {
             Write-Host ""
             Write-Host "[错误] 无效选择：$userInput" -ForegroundColor Red
-            Write-Host "[提示] 请输入数字 0-9 或直接输入命令名称" -ForegroundColor Yellow
+            Write-Host "[提示] 请输入数字 0-10 或直接输入命令名称" -ForegroundColor Yellow
             Start-Sleep -Seconds 2
             Clear-Host
             continue
@@ -138,11 +141,127 @@ while ($true) {
             Write-Host ""
             Write-Host "可用命令：" -ForegroundColor Green
             Write-Host ""
-            foreach ($option in $menuOptions[0..7]) {  # Exclude help and exit from detailed list
+            foreach ($option in $menuOptions[0..8]) {  # Exclude help and exit from detailed list
                 Write-Host "  $($option.Command.PadRight(12)) - $($option.Description)" -ForegroundColor White
             }
             Write-Host ""
-            Write-Host "[提示] 您可以输入数字 [0-9] 或直接输入命令名称" -ForegroundColor Cyan
+            Write-Host "[提示] 您可以输入数字 [0-10] 或直接输入命令名称" -ForegroundColor Cyan
+            Write-Host ""
+            Read-Host "按回车键继续"
+            Clear-Host
+            continue
+        }
+
+        "token" {
+            Clear-Host
+            Write-Host ""
+            Write-Host "================================================" -ForegroundColor Cyan
+            Write-Host "         Packy 使用监视器 - Token 设置" -ForegroundColor Yellow
+            Write-Host "================================================" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "请选择操作：" -ForegroundColor Green
+            Write-Host "  [1] 设置新的 API Token" -ForegroundColor White
+            Write-Host "  [2] 查看当前配置状态" -ForegroundColor White
+            Write-Host "  [0] 返回主菜单" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "请输入选择 [0-2]: " -ForegroundColor Yellow -NoNewline
+            $tokenChoice = Read-Host
+
+            switch ($tokenChoice.Trim()) {
+                "1" {
+                    Write-Host ""
+                    Write-Host "请输入您的 API Token:" -ForegroundColor Green
+                    Write-Host "[提示] Token 将被安全存储，用于API认证" -ForegroundColor Cyan
+                    Write-Host ""
+                    Write-Host "Token: " -ForegroundColor Yellow -NoNewline
+
+                    # Use Read-Host with -AsSecureString for secure input
+                    $secureToken = Read-Host -AsSecureString
+
+                    if ($secureToken.Length -eq 0) {
+                        Write-Host ""
+                        Write-Host "[提示] 未输入 Token，操作已取消" -ForegroundColor Yellow
+                    } else {
+                        # Convert SecureString to plain text for passing to executable
+                        $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken))
+
+                        if ([string]::IsNullOrWhiteSpace($plainToken)) {
+                            Write-Host ""
+                            Write-Host "[提示] 未输入 Token，操作已取消" -ForegroundColor Yellow
+                        } else {
+                            Write-Host ""
+                            Write-Host "正在设置 Token..." -ForegroundColor Gray
+                            Write-Host "----------------------------------------" -ForegroundColor DarkGray
+                            try {
+                                # Use direct process execution with proper input handling
+                                $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+                                $processInfo.FileName = $ExePath
+                                $processInfo.Arguments = "config set-token"
+                                $processInfo.UseShellExecute = $false
+                                $processInfo.RedirectStandardInput = $true
+                                $processInfo.RedirectStandardOutput = $true
+                                $processInfo.RedirectStandardError = $true
+                                $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+                                $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+                                $process = New-Object System.Diagnostics.Process
+                                $process.StartInfo = $processInfo
+                                $process.Start() | Out-Null
+
+                                # Send responses: No (don't hide input), then the token, then enter
+                                $process.StandardInput.WriteLine("N")  # Don't hide input
+                                Start-Sleep -Milliseconds 500  # Wait a bit
+                                $process.StandardInput.WriteLine($plainToken)  # Send the token
+                                $process.StandardInput.Close()
+
+                                $output = $process.StandardOutput.ReadToEnd()
+                                $error = $process.StandardError.ReadToEnd()
+                                $process.WaitForExit()
+
+                                if ($output) {
+                                    Write-Host $output
+                                }
+                                if ($error) {
+                                    Write-Host $error -ForegroundColor Red
+                                }
+
+                                if ($process.ExitCode -eq 0) {
+                                    Write-Host ""
+                                    Write-Host "[成功] Token 已成功设置" -ForegroundColor Green
+                                } else {
+                                    Write-Host ""
+                                    Write-Host "[错误] Token 设置失败，退出代码：$($process.ExitCode)" -ForegroundColor Red
+                                }
+                            } catch {
+                                Write-Host "[错误] 设置 Token 失败：$($_.Exception.Message)" -ForegroundColor Red
+                            } finally {
+                                # Clear the plain text token from memory
+                                $plainToken = $null
+                            }
+                            Write-Host "----------------------------------------" -ForegroundColor DarkGray
+                        }
+                    }
+                }
+                "2" {
+                    Write-Host ""
+                    Write-Host "正在获取当前配置..." -ForegroundColor Gray
+                    Write-Host "----------------------------------------" -ForegroundColor DarkGray
+                    try {
+                        & $ExePath config show
+                    } catch {
+                        Write-Host "[错误] 获取配置失败：$($_.Exception.Message)" -ForegroundColor Red
+                    }
+                    Write-Host "----------------------------------------" -ForegroundColor DarkGray
+                }
+                "0" {
+                    Write-Host ""
+                    Write-Host "[信息] 返回主菜单" -ForegroundColor Green
+                }
+                default {
+                    Write-Host ""
+                    Write-Host "[错误] 无效选择：$tokenChoice" -ForegroundColor Red
+                }
+            }
             Write-Host ""
             Read-Host "按回车键继续"
             Clear-Host
@@ -245,7 +364,7 @@ while ($true) {
     } else {
         Write-Host ""
         Write-Host "[错误] 未知命令：$cmd" -ForegroundColor Red
-        Write-Host "[提示] 请输入数字 0-9 或有效的命令名称" -ForegroundColor Yellow
+        Write-Host "[提示] 请输入数字 0-10 或有效的命令名称" -ForegroundColor Yellow
         Start-Sleep -Seconds 2
         Clear-Host
     }
