@@ -126,13 +126,32 @@ def tray(debug):
         
         app = TrayApp(config, token_manager, api_client)
         click.echo("🖥️  启动系统托盘应用...")
-        
+
         if debug:
             click.echo("📊 正在测试API连接...")
             test_result = api_client.test_connection_sync()
             click.echo(f"🔗 API连接测试: {'成功' if test_result else '失败'}")
-        
+
+            # 测试通知系统
+            click.echo("🔔 正在测试通知系统...")
+            try:
+                from ..ui.notification import NotificationManager
+                notification_manager = NotificationManager(config)
+                test_notification_result = notification_manager.test_notification()
+                click.echo(f"🔔 通知系统测试: {'成功' if test_notification_result else '失败或不可用'}")
+            except Exception as e:
+                click.echo(f"🔔 通知系统测试失败: {e}")
+
         app.run()
+
+    except KeyboardInterrupt:
+        click.echo("\n⏹️  收到中断信号，正在关闭托盘应用...")
+        try:
+            if 'app' in locals():
+                app.stop()
+        except Exception as e:
+            click.echo(f"🔧 清理时出现错误: {e}")
+        click.echo("👋 托盘应用已关闭")
         
     except Exception as e:
         click.echo(f"❌ 托盘应用启动失败: {e}", err=True)
@@ -259,9 +278,22 @@ def diagnose():
                 click.echo(f"   ✅ {dep}: {desc}")
             except ImportError:
                 click.echo(f"   ❌ {dep}: {desc} - 未安装")
-        
-        # 5. 系统信息
-        click.echo("\n5️⃣ 系统信息...")
+
+        # 5. 测试通知系统
+        click.echo("\n5️⃣ 测试通知系统...")
+        try:
+            from ..ui.notification import NotificationManager
+            notification_manager = NotificationManager(config)
+            test_result = notification_manager.test_notification()
+            if test_result:
+                click.echo("   ✅ 通知系统正常")
+            else:
+                click.echo("   ⚠️  通知系统不可用（可能缺少系统组件）")
+        except Exception as e:
+            click.echo(f"   ❌ 通知系统测试失败: {e}")
+
+        # 6. 系统信息
+        click.echo("\n6️⃣ 系统信息...")
         import sys
         import platform
         click.echo(f"   Python版本: {sys.version}")
