@@ -13,6 +13,11 @@ from ..ui.tray_app import TrayApp
 from ..ui.cli_display import CliDisplay
 from ..utils.logger import setup_logger
 
+# 导入调度器命令
+from .scheduler_commands import scheduler
+# 导入状态管理命令
+from .state_commands import state
+
 
 @click.group(invoke_without_command=True)
 @click.option('--version', is_flag=True, help='显示版本信息')
@@ -415,25 +420,31 @@ def check(threshold):
         config = ConfigManager()
         token_manager = TokenManager()
         api_client = ApiClient(config, token_manager)
-        
+
         budget_data = api_client.fetch_budget_data_sync()
-        
+
         if not budget_data:
             click.echo("❌ 无法获取预算数据")
             sys.exit(2)
-        
+
         daily_usage = budget_data.daily.percentage
         monthly_usage = budget_data.monthly.percentage
-        
+
         max_usage = max(daily_usage, monthly_usage)
-        
+
         if max_usage >= threshold:
             click.echo(f"❌ 预算使用率过高: {max_usage:.1f}% (阈值: {threshold}%)")
             sys.exit(1)
         else:
             click.echo(f"✅ 预算使用正常: {max_usage:.1f}%")
             sys.exit(0)
-            
+
     except Exception as e:
         click.echo(f"❌ 检查失败: {e}", err=True)
         sys.exit(2)
+
+
+# 添加调度器命令组
+cli.add_command(scheduler)
+# 添加状态管理命令组
+cli.add_command(state)

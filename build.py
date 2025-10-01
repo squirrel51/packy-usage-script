@@ -66,10 +66,15 @@ a = Analysis(
     datas=[],
     hiddenimports=[
         'pystray._win32',
-        'pystray._darwin', 
+        'pystray._darwin',
         'pystray._gtk',
         'PIL._tkinter_finder',
-        'keyring.backends'
+        'keyring.backends',
+        # plyer 平台特定模块（用于桌面通知）
+        'plyer.platforms.win.notification',
+        'plyer.platforms.linux.notification',
+        'plyer.platforms.macosx.notification',
+        'plyer.platforms',
     ],
     hookspath=[],
     hooksconfig={{}},

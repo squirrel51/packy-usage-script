@@ -40,13 +40,15 @@ $menuOptions = @(
     @{ Number = 5; Command = "status"; Description = "显示当前使用状态" },
     @{ Number = 6; Command = "tray"; Description = "启动系统托盘应用" },
     @{ Number = 7; Command = "watch"; Description = "实时监控模式" },
-    @{ Number = 8; Command = "token"; Description = "设置 API Token" },
-    @{ Number = 9; Command = "version"; Description = "显示版本信息" },
-    @{ Number = 10; Command = "help"; Description = "显示帮助信息" },
+    @{ Number = 8; Command = "scheduler"; Description = "任务调度器管理" },
+    @{ Number = 9; Command = "state"; Description = "状态管理" },
+    @{ Number = 10; Command = "token"; Description = "设置 API Token" },
+    @{ Number = 11; Command = "version"; Description = "显示版本信息" },
+    @{ Number = 12; Command = "help"; Description = "显示帮助信息" },
     @{ Number = 0; Command = "exit"; Description = "退出程序" }
 )
 
-$validCommands = @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "token")
+$validCommands = @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "scheduler", "state", "token")
 
 # Function to show menu
 function Show-Menu {
@@ -78,13 +80,13 @@ Clear-Host
 # Interactive loop
 while ($true) {
     Show-Menu
-    Write-Host "请输入选择 [0-10]: " -ForegroundColor Yellow -NoNewline
+    Write-Host "请输入选择 [0-12]: " -ForegroundColor Yellow -NoNewline
     $userInput = Read-Host
 
     # Handle empty input
     if ([string]::IsNullOrWhiteSpace($userInput)) {
         Write-Host ""
-        Write-Host "[提示] 请输入有效的数字选项 (0-10)" -ForegroundColor Yellow
+        Write-Host "[提示] 请输入有效的数字选项 (0-12)" -ForegroundColor Yellow
         Start-Sleep -Seconds 1
         Clear-Host
         continue
@@ -102,7 +104,7 @@ while ($true) {
             $cmd = $selectedOption.Command
         } else {
             Write-Host ""
-            Write-Host "[错误] 无效选择：$userInput (请输入 0-10)" -ForegroundColor Red
+            Write-Host "[错误] 无效选择：$userInput (请输入 0-12)" -ForegroundColor Red
             Start-Sleep -Seconds 2
             Clear-Host
             continue
@@ -110,10 +112,10 @@ while ($true) {
     } else {
         # Handle direct command input (backward compatibility)
         $cmd = $userInput.ToLower()
-        if (-not ($cmd -in @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "version", "help", "exit", "quit", "q", "token"))) {
+        if (-not ($cmd -in @("check", "config", "diagnose", "perf-test", "status", "tray", "watch", "scheduler", "state", "version", "help", "exit", "quit", "q", "token"))) {
             Write-Host ""
             Write-Host "[错误] 无效选择：$userInput" -ForegroundColor Red
-            Write-Host "[提示] 请输入数字 0-10 或直接输入命令名称" -ForegroundColor Yellow
+            Write-Host "[提示] 请输入数字 0-12 或直接输入命令名称" -ForegroundColor Yellow
             Start-Sleep -Seconds 2
             Clear-Host
             continue
@@ -141,11 +143,11 @@ while ($true) {
             Write-Host ""
             Write-Host "可用命令：" -ForegroundColor Green
             Write-Host ""
-            foreach ($option in $menuOptions[0..8]) {  # Exclude help and exit from detailed list
+            foreach ($option in $menuOptions[0..10]) {  # Exclude help and exit from detailed list
                 Write-Host "  $($option.Command.PadRight(12)) - $($option.Description)" -ForegroundColor White
             }
             Write-Host ""
-            Write-Host "[提示] 您可以输入数字 [0-10] 或直接输入命令名称" -ForegroundColor Cyan
+            Write-Host "[提示] 您可以输入数字 [0-12] 或直接输入命令名称" -ForegroundColor Cyan
             Write-Host ""
             Read-Host "按回车键继续"
             Clear-Host
@@ -364,7 +366,7 @@ while ($true) {
     } else {
         Write-Host ""
         Write-Host "[错误] 未知命令：$cmd" -ForegroundColor Red
-        Write-Host "[提示] 请输入数字 0-10 或有效的命令名称" -ForegroundColor Yellow
+        Write-Host "[提示] 请输入数字 0-12 或有效的命令名称" -ForegroundColor Yellow
         Start-Sleep -Seconds 2
         Clear-Host
     }

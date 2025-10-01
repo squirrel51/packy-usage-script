@@ -145,7 +145,6 @@ class TrayApp:
             Menu.SEPARATOR,
             MenuItem("ℹ️ 关于", self._show_about),
             MenuItem("❌ 退出", self._exit_app),
-            MenuItem("⚡ 强制退出", self._force_exit)
         )
     
     def _create_icon_image(self, status: str = "normal", percentage: float = 0) -> Image.Image:
